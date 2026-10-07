@@ -1,0 +1,17 @@
+[Unit]
+Description=Agentic World Tools
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/agentic-world-tools
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=AW_OPT=/opt
+ExecStart=/opt/agentic-world-tools/.venv/bin/python -m agentic_world_tools serve --host 0.0.0.0 --port 7777
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

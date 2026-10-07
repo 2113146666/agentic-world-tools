@@ -1,0 +1,1 @@
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart agentic-world, /usr/bin/systemctl restart agentic-world-tools, /usr/bin/systemctl restart nginx, /usr/bin/systemctl reload nginx, /usr/bin/systemctl is-active agentic-world, /usr/bin/systemctl is-active agentic-world-tools, /usr/bin/systemctl is-active nginx

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agentic World Tools</title>
+    <style>
+      :root {
+        --bg: #0b0e11;
+        --card: #161c24;
+        --line: rgba(120, 160, 140, 0.22);
+        --text: #e8eee9;
+        --dim: #8f9d93;
+        --hud: #7dcca0;
+        --warn: #d0b46a;
+        --danger: #c45c5c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font: 15px/1.55 "IBM Plex Sans", "Segoe UI", "PingFang SC", sans-serif;
+        color: var(--text);
+        background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(61, 155, 106, 0.12), transparent 55%), #0b0e11;
+      }
+      main { max-width: 920px; margin: 0 auto; padding: 32px 20px 64px; }
+      h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: 0.04em; }
+      .sub { color: var(--dim); margin-bottom: 28px; }
+      h2 { font-size: 13px; color: var(--hud); text-transform: uppercase; letter-spacing: 0.12em; margin: 28px 0 12px; }
+      .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .ok { color: var(--hud); }
+      .bad { color: var(--danger); }
+      .unk { color: var(--warn); }
+      button {
+        background: #3d9b6a;
+        color: #07110c;
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button.ghost { background: transparent; color: var(--hud); border: 1px solid var(--line); }
+      pre {
+        background: #10151b;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        max-height: 420px;
+        overflow: auto;
+        font: 12px/1.45 "IBM Plex Mono", ui-monospace, monospace;
+        white-space: pre-wrap;
+      }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      code { color: var(--hud); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Agentic World Tools</h1>
+      <p class="sub">本机 <code>:7777</code>。运维工具台，不是知识站。</p>
+
+      <h2>服务</h2>
+      <div class="grid" id="services"></div>
+
+      <h2>仓库</h2>
+      <div class="grid" id="repos"></div>
+
+      <h2>工具</h2>
+      <div class="card">
+        <p style="margin-top:0"><strong>更新三仓并重启</strong></p>
+        <p class="sub" style="margin:0 0 12px">
+          pull <code>agentic-world</code> / <code>agentic-world-front</code> / <code>agentic-world-tools</code>，重建前端，重启 API 和 Nginx，最后重启本进程。
+        </p>
+        <div class="row">
+          <button id="update" type="button">一键更新</button>
+          <button class="ghost" id="refresh" type="button">刷新状态</button>
+          <span id="jobstate" class="dim"></span>
+        </div>
+      </div>
+
+      <h2>日志</h2>
+      <pre id="log">还没有任务。</pre>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      function mark(active) {
+        if (active === true) return '<span class="ok">running</span>';
+        if (active === false) return '<span class="bad">stopped</span>';
+        return '<span class="unk">n/a</span>';
+      }
+
+      async function loadStatus() {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        $("services").innerHTML = (data.services || [])
+          .map((s) => `<div class="card"><strong>${s.id}</strong><div>${mark(s.active)} · ${s.detail || ""}</div></div>`)
+          .join("");
+        $("repos").innerHTML = (data.repos || [])
+          .map((r) => `<div class="card"><strong>${r.id}</strong><div>${r.exists ? (r.branch || "?") + " @" + (r.head || "?") : "缺失"}</div><div class="sub">${r.path}</div></div>`)
+          .join("");
+        if (data.job) renderJob(data.job);
+      }
+
+      function renderJob(job) {
+        $("jobstate").textContent = job.status + (job.ok === false ? " · 失败" : "");
+        $("log").textContent = (job.lines || []).join("\n") || "（无输出）";
+        $("update").disabled = job.status === "running" || job.status === "restarting";
+      }
+
+      async function pollJob() {
+        try {
+          const res = await fetch("/api/jobs/latest");
+          if (!res.ok) throw new Error("tools 重启中");
+          const data = await res.json();
+          if (data.job) renderJob(data.job);
+          if (data.job && (data.job.status === "running" || data.job.status === "restarting")) {
+            setTimeout(pollJob, 1000);
+            return;
+          }
+        } catch {
+          $("jobstate").textContent = "等待 tools 回来…";
+          setTimeout(pollJob, 1500);
+          return;
+        }
+        loadStatus();
+      }
+
+      $("refresh").onclick = () => loadStatus().catch((e) => ($("log").textContent = String(e)));
+      $("update").onclick = async () => {
+        if (!confirm("确认 pull 三个仓库并重启服务？未提交的本地改动可能导致 pull 失败。")) return;
+        $("update").disabled = true;
+        const res = await fetch("/api/tools/update-stack", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) {
+          $("log").textContent = data.detail || JSON.stringify(data);
+          $("update").disabled = false;
+          return;
+        }
+        renderJob(data.job);
+        pollJob();
+      };
+
+      loadStatus().catch((e) => ($("log").textContent = String(e)));
+      setInterval(() => loadStatus().catch(() => {}), 8000);
+    </script>
+  </body>
+</html>
