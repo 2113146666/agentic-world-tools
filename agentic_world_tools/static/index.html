@@ -123,9 +123,11 @@
       }
 
       function renderJob(job) {
-        $("jobstate").textContent = job.status + (job.ok === false ? " · 失败" : "");
+        const labels = { running: "执行中", restarting: "重启中", done: "完成" };
+        const label = labels[job.status] || job.status;
+        $("jobstate").textContent = label + (job.ok === false ? " · 失败" : "");
         $("joblog").textContent = (job.lines || []).join("\n") || "（无输出）";
-        $("update").disabled = job.status === "running" || job.status === "restarting";
+        $("update").disabled = job.status === "running";
       }
 
       async function pollJob() {

@@ -54,6 +54,14 @@ class JobTests(unittest.TestCase):
         second = jobs.new_job("update-stack")
         self.assertNotEqual(first["id"], second["id"])
 
+    def test_restarting_job_clears_once_process_is_up(self) -> None:
+        job = jobs.new_job("update-stack")
+        jobs.finish(job, True, status="restarting")
+        jobs._current = None
+        healed = jobs.current()
+        self.assertEqual(healed["status"], "done")
+        self.assertTrue(healed["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

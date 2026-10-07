@@ -58,13 +58,24 @@ def finish(job: dict, ok: bool, status: str = "done") -> None:
 
 
 def current() -> dict | None:
+    global _current
     with _lock:
-        if _current:
-            return json.loads(json.dumps(_current))
-    path = latest_path()
-    if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
-    return None
+        job = _current
+        if job is None:
+            path = latest_path()
+            if path.exists():
+                job = json.loads(path.read_text(encoding="utf-8"))
+                _current = job
+        if job and job.get("status") == "restarting":
+            # 能响应请求说明进程已起来，重启完成。不把 restarting 留在磁盘上，否则按钮会永远禁用。
+            job["status"] = "done"
+            job["ok"] = True
+            job["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+            job.setdefault("lines", []).append("tools 已重新拉起")
+            _persist(job)
+        if not job:
+            return None
+        return json.loads(json.dumps(job))
 
 
 def load(job_id: str) -> dict | None:
