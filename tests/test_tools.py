@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from agentic_world_tools.paths import TOOLS_ROOT, frontend_root, repo_path
+from agentic_world_tools.paths import TOOLS_ROOT, frontend_root, log_path, repo_path
+from agentic_world_tools.runner import commit_changed
 from agentic_world_tools import jobs
 
 
@@ -25,6 +26,15 @@ class PathTests(unittest.TestCase):
             flat.mkdir()
             (flat / "package.json").write_text("{}", encoding="utf-8")
             self.assertEqual(frontend_root(flat), flat)
+
+    def test_log_path_per_service(self) -> None:
+        self.assertTrue(log_path("nginx").endswith("error.log"))
+        self.assertTrue(log_path("agentic-world-tools").endswith("service.log"))
+
+    def test_restart_only_when_commit_changes(self) -> None:
+        self.assertFalse(commit_changed("abc", "abc"))
+        self.assertFalse(commit_changed("abc", None))
+        self.assertTrue(commit_changed("abc", "def"))
 
 
 class JobTests(unittest.TestCase):

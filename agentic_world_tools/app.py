@@ -16,8 +16,8 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 TOOLS = [
     {
         "id": "update-stack",
-        "name": "更新三仓并重启",
-        "description": "git pull 三个仓库；控制面装依赖并重启；前端构建后拷到 Nginx 目录；最后重启本工具服务。",
+        "name": "一键更新&部署",
+        "description": "一键拉取所有业务服务的最新代码，并重启commit_id发生变化的服务",
         "path": "/api/tools/update-stack",
         "dangerous": True,
     }

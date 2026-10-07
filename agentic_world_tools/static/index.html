@@ -23,20 +23,22 @@
         color: var(--text);
         background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(61, 155, 106, 0.12), transparent 55%), #0b0e11;
       }
-      main { max-width: 920px; margin: 0 auto; padding: 32px 20px 64px; }
+      main { max-width: 960px; margin: 0 auto; padding: 32px 20px 64px; }
       h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: 0.04em; }
       .sub { color: var(--dim); margin-bottom: 28px; }
-      h2 { font-size: 13px; color: var(--hud); text-transform: uppercase; letter-spacing: 0.12em; margin: 28px 0 12px; }
-      .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      h2 { font-size: 13px; color: var(--hud); letter-spacing: 0.12em; margin: 28px 0 12px; }
       .card {
         background: var(--card);
         border: 1px solid var(--line);
         border-radius: 10px;
         padding: 14px 16px;
       }
+      table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+      th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+      th { color: var(--dim); font-weight: 500; }
+      tr:last-child td { border-bottom: 0; }
       .ok { color: var(--hud); }
       .bad { color: var(--danger); }
-      .unk { color: var(--warn); }
       button {
         background: #3d9b6a;
         color: #07110c;
@@ -53,13 +55,13 @@
         border: 1px solid var(--line);
         border-radius: 10px;
         padding: 12px;
-        max-height: 420px;
+        max-height: 280px;
         overflow: auto;
         font: 12px/1.45 "IBM Plex Mono", ui-monospace, monospace;
         white-space: pre-wrap;
       }
       .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-      code { color: var(--hud); }
+      code { color: var(--hud); word-break: break-all; }
     </style>
   </head>
   <body>
@@ -67,52 +69,62 @@
       <h1>Agentic World Tools</h1>
       <p class="sub">本机 <code>:7777</code>。运维工具台，不是知识站。</p>
 
-      <h2>服务</h2>
-      <div class="grid" id="services"></div>
+      <h2>服务状态</h2>
+      <table>
+        <thead><tr><th>服务</th><th>状态</th></tr></thead>
+        <tbody id="services"></tbody>
+      </table>
 
-      <h2>仓库</h2>
-      <div class="grid" id="repos"></div>
+      <h2>服务仓库</h2>
+      <table>
+        <thead><tr><th>服务</th><th>分支</th><th>commit_id</th><th>路径</th></tr></thead>
+        <tbody id="repos"></tbody>
+      </table>
 
       <h2>工具</h2>
       <div class="card">
-        <p style="margin-top:0"><strong>更新三仓并重启</strong></p>
-        <p class="sub" style="margin:0 0 12px">
-          pull <code>agentic-world</code> / <code>agentic-world-front</code> / <code>agentic-world-tools</code>，重建前端，重启 API 和 Nginx，最后重启本进程。
-        </p>
+        <p style="margin-top:0"><strong>一键更新&amp;部署</strong></p>
+        <p class="sub" style="margin:0 0 12px">一键拉取所有业务服务的最新代码，并重启commit_id发生变化的服务</p>
         <div class="row">
-          <button id="update" type="button">一键更新</button>
+          <button id="update" type="button">一键更新&amp;部署</button>
           <button class="ghost" id="refresh" type="button">刷新状态</button>
-          <span id="jobstate" class="dim"></span>
+          <span id="jobstate"></span>
         </div>
+        <pre id="joblog" style="margin:12px 0 0">还没有执行记录。</pre>
       </div>
 
-      <h2>日志</h2>
-      <pre id="log">还没有任务。</pre>
+      <h2>日志信息</h2>
+      <table>
+        <thead><tr><th>服务</th><th>日志路径</th></tr></thead>
+        <tbody id="logs"></tbody>
+      </table>
     </main>
     <script>
       const $ = (id) => document.getElementById(id);
-
-      function mark(active) {
-        if (active === true) return '<span class="ok">running</span>';
-        if (active === false) return '<span class="bad">stopped</span>';
-        return '<span class="unk">n/a</span>';
-      }
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
       async function loadStatus() {
         const res = await fetch("/api/status");
         const data = await res.json();
         $("services").innerHTML = (data.services || [])
-          .map((s) => `<div class="card"><strong>${s.id}</strong><div>${mark(s.active)} · ${s.detail || ""}</div></div>`)
+          .map((s) => {
+            const cls = s.active ? "ok" : "bad";
+            const text = s.status || (s.active ? "运行中" : "未启动");
+            return `<tr><td>${esc(s.id)}</td><td class="${cls}">${esc(text)}</td></tr>`;
+          })
           .join("");
         $("repos").innerHTML = (data.repos || [])
-          .map((r) => `<div class="card"><strong>${r.id}</strong><div>${r.exists ? (r.branch || "?") + " @" + (r.head || "?") : "缺失"}</div><div class="sub">${r.path}</div></div>`)
+          .map((r) => `<tr><td>${esc(r.id)}</td><td>${esc(r.exists ? r.branch || "-" : "-")}</td><td><code>${esc(r.exists ? r.commit_id || "-" : "-")}</code></td><td><code>${esc(r.path)}</code></td></tr>`)
+          .join("");
+        $("logs").innerHTML = (data.logs || [])
+          .map((l) => `<tr><td>${esc(l.id)}</td><td><code>${esc(l.log_path)}</code></td></tr>`)
           .join("");
         if (data.job) renderJob(data.job);
       }
 
       function renderJob(job) {
         $("jobstate").textContent = job.status + (job.ok === false ? " · 失败" : "");
-        $("log").textContent = (job.lines || []).join("\n") || "（无输出）";
+        $("joblog").textContent = (job.lines || []).join("\n") || "（无输出）";
         $("update").disabled = job.status === "running" || job.status === "restarting";
       }
 
@@ -134,14 +146,14 @@
         loadStatus();
       }
 
-      $("refresh").onclick = () => loadStatus().catch((e) => ($("log").textContent = String(e)));
+      $("refresh").onclick = () => loadStatus().catch((e) => ($("joblog").textContent = String(e)));
       $("update").onclick = async () => {
-        if (!confirm("确认 pull 三个仓库并重启服务？未提交的本地改动可能导致 pull 失败。")) return;
+        if (!confirm("确认拉取业务代码？仅重启 commit_id 发生变化的服务。")) return;
         $("update").disabled = true;
         const res = await fetch("/api/tools/update-stack", { method: "POST" });
         const data = await res.json();
         if (!res.ok) {
-          $("log").textContent = data.detail || JSON.stringify(data);
+          $("joblog").textContent = data.detail || JSON.stringify(data);
           $("update").disabled = false;
           return;
         }
@@ -149,7 +161,7 @@
         pollJob();
       };
 
-      loadStatus().catch((e) => ($("log").textContent = String(e)));
+      loadStatus().catch((e) => ($("joblog").textContent = String(e)));
       setInterval(() => loadStatus().catch(() => {}), 8000);
     </script>
   </body>

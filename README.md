@@ -2,7 +2,7 @@
 
 运维工具台。一个 Python 进程，默认 `0.0.0.0:7777`，页面上可以看服务状态、按按钮跑工具。不是知识站，不并进控制面仓。
 
-当前工具：一键 `git pull` 三个仓库，重建前端，重启 API / Nginx / 本服务。
+当前工具：一键更新&部署。拉取三个业务仓，只对 commit_id 变化的服务做构建和重启。
 
 ## 本机
 
@@ -19,7 +19,7 @@ python -m agentic_world_tools serve --host 127.0.0.1 --port 7777
 
 ## 轻量机
 
-仓库放到 `/opt/agentic-world-tools`。控制台防火墙放行 **TCP 7777**（建议来源只填你的公网 IP）。不要把 8000 开到公网。
+仓库放到 `/opt/agentic-world-tools`。控制台防火墙放行 **TCP 7777**，来源 `0.0.0.0/0` 即可外网访问。不要把 8000 开到公网。这个端口上有部署按钮。
 
 ```bash
 git clone git@github.com:2113146666/agentic-world-tools.git /opt/agentic-world-tools

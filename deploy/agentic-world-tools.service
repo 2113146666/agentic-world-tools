@@ -9,7 +9,10 @@ Group=ubuntu
 WorkingDirectory=/opt/agentic-world-tools
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=AW_OPT=/opt
+ExecStartPre=/bin/mkdir -p /opt/agentic-world-tools/data
 ExecStart=/opt/agentic-world-tools/.venv/bin/python -m agentic_world_tools serve --host 0.0.0.0 --port 7777
+StandardOutput=append:/opt/agentic-world-tools/data/service.log
+StandardError=append:/opt/agentic-world-tools/data/service.log
 Restart=on-failure
 RestartSec=3
 
