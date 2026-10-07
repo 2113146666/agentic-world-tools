@@ -91,6 +91,12 @@
           <span id="jobstate"></span>
         </div>
         <pre id="joblog" style="margin:12px 0 0">还没有执行记录。</pre>
+        <p class="sub" style="margin:16px 0 8px">若工具长时间未生效，SSH 到机器上执行：</p>
+        <pre style="margin:0">cd /opt/agentic-world-tools
+git pull --ff-only
+sudo systemctl restart agentic-world-tools
+sudo systemctl restart agentic-world
+sudo systemctl reload nginx</pre>
       </div>
 
       <h2>日志信息</h2>
